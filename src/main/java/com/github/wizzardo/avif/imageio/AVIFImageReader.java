@@ -14,8 +14,7 @@ import javax.imageio.spi.ImageReaderSpi;
 import javax.imageio.stream.ImageInputStream;
 import java.awt.image.BufferedImage;
 import java.awt.image.WritableRaster;
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.nio.ByteBuffer;
@@ -31,16 +30,16 @@ public class AVIFImageReader extends ImageReader {
             System.out.println("java.library.path: " + System.getProperty("java.library.path"));
             System.loadLibrary("avif"); // This might give a more verbose error message
             System.out.println("libavif loaded successfully via System.loadLibrary (diagnostic)");
+
+            try (Arena arena = Arena.ofConfined()) {
+                System.out.println(avif_h.avifVersion().getString(0));
+                MemorySegment mem = arena.allocate(256);
+                avif_h.avifCodecVersions(mem);
+                System.out.println(mem.getString(0));
+            }
         } catch (UnsatisfiedLinkError e) {
             System.err.println("Error loading libavif with System.loadLibrary: " + e.getMessage());
             // This message can sometimes be more helpful in debugging.
-        }
-
-        try (Arena arena = Arena.ofConfined()) {
-            System.out.println(avif_h.avifVersion().getString(0));
-            MemorySegment mem = arena.allocate(256);
-            avif_h.avifCodecVersions(mem);
-            System.out.println(mem.getString(0));
         }
     }
 
@@ -125,7 +124,8 @@ public class AVIFImageReader extends ImageReader {
             decoder = avif_h.avifDecoderCreate();
 //                byte[] bytes = Files.readAllBytes(Path.of("/users/wizzardo/downloads/hato.profile0.8bpc.yuv420.avif"));
 //                byte[] bytes = Files.readAllBytes(Path.of("/users/wizzardo/downloads/hato.profile0.10bpc.yuv420.avif"));
-            byte[] bytes = Files.readAllBytes(Path.of("/users/wizzardo/downloads/PNG_transparency_demonstration_1.avif"));
+//            byte[] bytes = Files.readAllBytes(Path.of("/users/wizzardo/downloads/PNG_transparency_demonstration_1.avif"));
+            byte[] bytes = readAllBytes(stream);
             ByteBuffer fileBuffer = ByteBuffer.allocateDirect(bytes.length);
             fileBuffer.put(bytes);
             fileBuffer.flip();
@@ -221,5 +221,26 @@ public class AVIFImageReader extends ImageReader {
 //        ByteBuffer buffer = memorySegment.asByteBuffer();
         return memorySegment.getString(0);
 //        return result + "";
+    }
+
+    public static byte[] readAllBytes(ImageInputStream iis) throws IOException {
+        // Try fast path if length is known
+        long length = iis.length();
+        if (length >= 0 && length <= Integer.MAX_VALUE) {
+            byte[] data = new byte[(int) length];
+            iis.readFully(data);
+            return data;
+        }
+
+        // Fallback: buffered read
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        byte[] chunk = new byte[8192];
+        int n;
+
+        while ((n = iis.read(chunk)) != -1) {
+            buffer.write(chunk, 0, n);
+        }
+
+        return buffer.toByteArray();
     }
 }
