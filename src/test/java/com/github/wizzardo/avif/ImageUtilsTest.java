@@ -1,5 +1,6 @@
 package com.github.wizzardo.avif;
 
+import com.github.wizzardo.avif.imageio.AVIFTools;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -26,7 +27,7 @@ public class ImageUtilsTest {
         Assertions.assertEquals(30, fromPng.getWidth());
         Assertions.assertEquals(30, fromPng.getHeight());
 
-        byte[] avifBytes = ImageUtils.writeAVIF(original);
+        byte[] avifBytes = AVIFTools.writeAVIF(original);
         Assertions.assertTrue(avifBytes.length > 0);
 
         BufferedImage fromAvif = ImageUtils.read(avifBytes);
@@ -57,8 +58,8 @@ public class ImageUtilsTest {
         g.fillOval(5, 5, 30, 30);
         g.dispose();
 
-        byte[] low = ImageUtils.writeAVIF(image, 0.1f);
-        byte[] high = ImageUtils.writeAVIF(image, 0.9f);
+        byte[] low = AVIFTools.writeAVIF(image, 0.1f);
+        byte[] high = AVIFTools.writeAVIF(image, 0.9f);
 
         Assertions.assertTrue(low.length > 0);
         Assertions.assertTrue(high.length > 0);
@@ -71,6 +72,5 @@ public class ImageUtilsTest {
         Assertions.assertThrows(IllegalArgumentException.class, () -> ImageUtils.read((java.io.InputStream) null));
         BufferedImage image = new BufferedImage(10, 10, BufferedImage.TYPE_INT_RGB);
         Assertions.assertThrows(IOException.class, () -> ImageUtils.write(image, "non_existent_format"));
-        Assertions.assertThrows(IOException.class, () -> ImageUtils.write(image, "non_existent_format", 0.5f));
     }
 }

@@ -12,6 +12,10 @@ public class AVIFImageWriteParamTest {
 
     @Test
     public void testConstants() {
+        Assertions.assertEquals(avif_h.AVIF_SPEED_SLOWEST(), AVIFImageWriteParam.AVIF_SPEED_SLOWEST);
+        Assertions.assertEquals(avif_h.AVIF_SPEED_FASTEST(), AVIFImageWriteParam.AVIF_SPEED_FASTEST);
+        Assertions.assertEquals(6, AVIFImageWriteParam.AVIF_SPEED_DEFAULT);
+
         Assertions.assertEquals(avif_h.AVIF_PIXEL_FORMAT_NONE(), AVIFImageWriteParam.AVIF_PIXEL_FORMAT_NONE);
         Assertions.assertEquals(avif_h.AVIF_PIXEL_FORMAT_YUV444(), AVIFImageWriteParam.AVIF_PIXEL_FORMAT_YUV444);
         Assertions.assertEquals(avif_h.AVIF_PIXEL_FORMAT_YUV422(), AVIFImageWriteParam.AVIF_PIXEL_FORMAT_YUV422);
@@ -29,6 +33,7 @@ public class AVIFImageWriteParamTest {
         Assertions.assertEquals(AVIFImageWriteParam.AVIF_PIXEL_FORMAT_YUV420, param.getPixelFormat());
         Assertions.assertEquals(AVIFImageWriteParam.AVIF_PIXEL_FORMAT_YUV420, param.getYuvFormat());
         Assertions.assertEquals(AVIFImageWriteParam.AVIF_PIXEL_FORMAT_YUV420, param.getPixelSubsampling());
+        Assertions.assertEquals(6, param.getSpeed());
     }
 
     @Test
@@ -36,6 +41,24 @@ public class AVIFImageWriteParamTest {
         AVIFImageWriteParam param = new AVIFImageWriteParam(Locale.GERMANY);
         Assertions.assertEquals(Locale.GERMANY, param.getLocale());
         Assertions.assertEquals(AVIFImageWriteParam.AVIF_PIXEL_FORMAT_YUV420, param.getPixelFormat());
+        Assertions.assertEquals(6, param.getSpeed());
+    }
+
+    @Test
+    public void testSetSpeed() {
+        AVIFImageWriteParam param = new AVIFImageWriteParam();
+
+        param.setSpeed(0);
+        Assertions.assertEquals(0, param.getSpeed());
+
+        param.setSpeed(10);
+        Assertions.assertEquals(10, param.getSpeed());
+
+        param.setSpeed(6);
+        Assertions.assertEquals(6, param.getSpeed());
+
+        Assertions.assertThrows(IllegalArgumentException.class, () -> param.setSpeed(-1));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> param.setSpeed(11));
     }
 
     @Test

@@ -1,6 +1,7 @@
 package com.github.wizzardo.avif;
 
 import com.github.wizzardo.avif.imageio.AVIFImageWriteParam;
+import com.github.wizzardo.avif.imageio.AVIFTools;
 import org.jextract.avif.avifDecoder;
 import org.jextract.avif.avifImage;
 import org.jextract.avif.avif_h;
@@ -93,8 +94,8 @@ public class AVIFWriterTest {
         int height = 100;
         BufferedImage image = createTestImage(width, height);
 
-        byte[] bytesLow = ImageUtils.write(image, "avif", 0.1f);
-        byte[] bytesHigh = ImageUtils.write(image, "avif", 0.9f);
+        byte[] bytesLow = AVIFTools.writeAVIF(image, 0.1f);
+        byte[] bytesHigh = AVIFTools.writeAVIF(image, 0.9f);
 
         Assertions.assertTrue(bytesLow.length > 0);
         Assertions.assertTrue(bytesHigh.length > 0);
@@ -113,7 +114,7 @@ public class AVIFWriterTest {
         int height = 100;
         BufferedImage image = createTestImage(width, height);
 
-        byte[] bytes = ImageUtils.writeAVIF(image);
+        byte[] bytes = AVIFTools.writeAVIF(image);
         Assertions.assertTrue(bytes.length > 0);
 
         int pixelFormat = getAvifPixelFormat(bytes);
@@ -131,7 +132,7 @@ public class AVIFWriterTest {
         int height = 100;
         BufferedImage image = createTestImage(width, height);
 
-        byte[] bytes = ImageUtils.writeAVIF(image, 0.8f, AVIFImageWriteParam.AVIF_PIXEL_FORMAT_YUV444);
+        byte[] bytes = AVIFTools.writeAVIF(image, 0.8f, AVIFImageWriteParam.AVIF_PIXEL_FORMAT_YUV444);
         Assertions.assertTrue(bytes.length > 0);
 
         int pixelFormat = getAvifPixelFormat(bytes);
@@ -149,7 +150,7 @@ public class AVIFWriterTest {
         int height = 100;
         BufferedImage image = createTestImage(width, height);
 
-        byte[] bytes = ImageUtils.writeAVIF(image, 0.8f, AVIFImageWriteParam.AVIF_PIXEL_FORMAT_YUV420);
+        byte[] bytes = AVIFTools.writeAVIF(image, 0.8f, AVIFImageWriteParam.AVIF_PIXEL_FORMAT_YUV420);
         Assertions.assertTrue(bytes.length > 0);
 
         int pixelFormat = getAvifPixelFormat(bytes);
@@ -159,6 +160,36 @@ public class AVIFWriterTest {
         Assertions.assertNotNull(readBack);
         Assertions.assertEquals(width, readBack.getWidth());
         Assertions.assertEquals(height, readBack.getHeight());
+    }
+
+    @Test
+    public void testWriteWithSpeed() throws IOException {
+        int width = 100;
+        int height = 100;
+        BufferedImage image = createTestImage(width, height);
+
+        byte[] bytesSpeedSlow = AVIFTools.writeAVIF(image, 0.8f, AVIFImageWriteParam.AVIF_PIXEL_FORMAT_YUV420, AVIFImageWriteParam.AVIF_SPEED_SLOWEST);
+        byte[] bytesSpeedFast = AVIFTools.writeAVIF(image, 0.8f, AVIFImageWriteParam.AVIF_PIXEL_FORMAT_YUV420, AVIFImageWriteParam.AVIF_SPEED_FASTEST);
+        byte[] bytesSpeedDefault = AVIFTools.writeAVIF(image, 0.8f, AVIFImageWriteParam.AVIF_PIXEL_FORMAT_YUV420, AVIFImageWriteParam.AVIF_SPEED_DEFAULT);
+
+        Assertions.assertTrue(bytesSpeedSlow.length > 0);
+        Assertions.assertTrue(bytesSpeedFast.length > 0);
+        Assertions.assertTrue(bytesSpeedDefault.length > 0);
+
+        BufferedImage readBackSlow = ImageUtils.read(bytesSpeedSlow);
+        Assertions.assertNotNull(readBackSlow);
+        Assertions.assertEquals(width, readBackSlow.getWidth());
+        Assertions.assertEquals(height, readBackSlow.getHeight());
+
+        BufferedImage readBackFast = ImageUtils.read(bytesSpeedFast);
+        Assertions.assertNotNull(readBackFast);
+        Assertions.assertEquals(width, readBackFast.getWidth());
+        Assertions.assertEquals(height, readBackFast.getHeight());
+
+        BufferedImage readBackDefault = ImageUtils.read(bytesSpeedDefault);
+        Assertions.assertNotNull(readBackDefault);
+        Assertions.assertEquals(width, readBackDefault.getWidth());
+        Assertions.assertEquals(height, readBackDefault.getHeight());
     }
 
     private int getAvifPixelFormat(byte[] bytes) {

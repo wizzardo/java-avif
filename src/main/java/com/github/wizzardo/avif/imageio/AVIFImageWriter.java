@@ -92,8 +92,11 @@ public class AVIFImageWriter extends ImageWriter {
         boolean hasAlpha = bi.getColorModel().hasAlpha();
 
         int pixelFormat = avif_h.AVIF_PIXEL_FORMAT_YUV420();
+        int speed = AVIFImageWriteParam.AVIF_SPEED_DEFAULT;
         if (param instanceof AVIFImageWriteParam) {
-            pixelFormat = ((AVIFImageWriteParam) param).getPixelFormat();
+            AVIFImageWriteParam avifParam = (AVIFImageWriteParam) param;
+            pixelFormat = avifParam.getPixelFormat();
+            speed = avifParam.getSpeed();
         }
 
         try (Arena arena = Arena.ofConfined()) {
@@ -128,6 +131,7 @@ public class AVIFImageWriter extends ImageWriter {
                     }
 
                     try {
+                        avifEncoder.speed(encoder, speed);
                         if (param != null && param.getCompressionMode() == ImageWriteParam.MODE_EXPLICIT) {
                             float quality = param.getCompressionQuality();
                             avifEncoder.quality(encoder, (int) (quality * 100));
