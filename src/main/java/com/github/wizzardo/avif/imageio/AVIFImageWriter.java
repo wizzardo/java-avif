@@ -89,6 +89,7 @@ public class AVIFImageWriter extends ImageWriter {
         BufferedImage bi = (BufferedImage) renderedImage;
         int width = bi.getWidth();
         int height = bi.getHeight();
+        boolean hasAlpha = bi.getColorModel().hasAlpha();
 
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment image = avif_h.avifImageCreate(width, height, 8, avif_h.AVIF_PIXEL_FORMAT_YUV444());
@@ -99,7 +100,7 @@ public class AVIFImageWriter extends ImageWriter {
             try {
                 MemorySegment rgbImage = avifRGBImage.allocate(arena);
                 avif_h.avifRGBImageSetDefaults(rgbImage, image);
-                avifRGBImage.format(rgbImage, avif_h.AVIF_RGB_FORMAT_ARGB());
+                avifRGBImage.format(rgbImage, hasAlpha ? avif_h.AVIF_RGB_FORMAT_ARGB() : avif_h.AVIF_RGB_FORMAT_RGB());
                 avifRGBImage.depth(rgbImage, 8);
 
                 int result = avif_h.avifRGBImageAllocatePixels(rgbImage);
@@ -109,7 +110,7 @@ public class AVIFImageWriter extends ImageWriter {
 
                 try {
                     MemorySegment pixels = avifRGBImage.pixels(rgbImage);
-                    copyBufferedImageToPixels(bi, pixels);
+                    copyBufferedImageToPixels(bi, pixels, hasAlpha);
 
                     result = avif_h.avifImageRGBToYUV(image, rgbImage);
                     if (result != avif_h.AVIF_RESULT_OK()) {
@@ -164,38 +165,53 @@ public class AVIFImageWriter extends ImageWriter {
         }
     }
 
-    private void copyBufferedImageToPixels(BufferedImage bi, MemorySegment pixels) {
+    private void copyBufferedImageToPixels(BufferedImage bi, MemorySegment pixels, boolean hasAlpha) {
         int width = bi.getWidth();
         int height = bi.getHeight();
-        int type = bi.getType();
 
         // Standard way to get pixel data
         int[] rgb = bi.getRGB(0, 0, width, height, null, 0, width);
-        
-        // Convert to ARGB (which is what we set in avifRGBImage.format)
-        // libavif's AVIF_RGB_FORMAT_ARGB is A, R, G, B in memory order.
-        // On little-endian, it is B, G, R, A as an int.
-        // BufferedImage.getRGB returns ARGB as an int: (A << 24) | (R << 16) | (G << 8) | B
-        
-        ByteBuffer buffer = pixels.asSlice(0, (long) width * height * 4).asByteBuffer().order(ByteOrder.nativeOrder());
-        IntBuffer intBuffer = buffer.asIntBuffer();
-        
-        for (int i = 0; i < rgb.length; i++) {
-            int argb = rgb[i];
-            // Reorder if necessary. AVIF_RGB_FORMAT_ARGB expects:
-            // byte[0] = A, byte[1] = R, byte[2] = G, byte[3] = B
-            // On little-endian, this is int: 0xBBGGRRAA
-            
-            int a = (argb >> 24) & 0xFF;
-            int r = (argb >> 16) & 0xFF;
-            int g = (argb >> 8) & 0xFF;
-            int b = argb & 0xFF;
-            
-            if (ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN) {
-                intBuffer.put(i, (b << 24) | (g << 16) | (r << 8) | a);
-            } else {
-                intBuffer.put(i, (a << 24) | (r << 16) | (g << 8) | b);
+
+        if (hasAlpha) {
+            // Convert to ARGB (which is what we set in avifRGBImage.format)
+            // libavif's AVIF_RGB_FORMAT_ARGB is A, R, G, B in memory order.
+            // On little-endian, it is B, G, R, A as an int.
+            // BufferedImage.getRGB returns ARGB as an int: (A << 24) | (R << 16) | (G << 8) | B
+
+            ByteBuffer buffer = pixels.asSlice(0, (long) width * height * 4).asByteBuffer().order(ByteOrder.nativeOrder());
+            IntBuffer intBuffer = buffer.asIntBuffer();
+
+            for (int i = 0; i < rgb.length; i++) {
+                int argb = rgb[i];
+                // Reorder if necessary. AVIF_RGB_FORMAT_ARGB expects:
+                // byte[0] = A, byte[1] = R, byte[2] = G, byte[3] = B
+                // On little-endian, this is int: 0xBBGGRRAA
+
+                int a = (argb >> 24) & 0xFF;
+                int r = (argb >> 16) & 0xFF;
+                int g = (argb >> 8) & 0xFF;
+                int b = argb & 0xFF;
+
+                if (ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN) {
+                    intBuffer.put(i, (b << 24) | (g << 16) | (r << 8) | a);
+                } else {
+                    intBuffer.put(i, (a << 24) | (r << 16) | (g << 8) | b);
+                }
             }
+        } else {
+            // Convert to RGB (which is what we set in avifRGBImage.format)
+            // libavif's AVIF_RGB_FORMAT_RGB is R, G, B in memory order:
+            // byte[0] = R, byte[1] = G, byte[2] = B
+            ByteBuffer buffer = pixels.asSlice(0, (long) width * height * 3).asByteBuffer();
+            byte[] byteBuffer = new byte[rgb.length * 3];
+            int offset = 0;
+            for (int i = 0; i < rgb.length; i++) {
+                int val = rgb[i];
+                byteBuffer[offset++] = (byte) ((val >> 16) & 0xFF);
+                byteBuffer[offset++] = (byte) ((val >> 8) & 0xFF);
+                byteBuffer[offset++] = (byte) (val & 0xFF);
+            }
+            buffer.put(byteBuffer);
         }
     }
 

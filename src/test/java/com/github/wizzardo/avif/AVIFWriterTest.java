@@ -18,6 +18,89 @@ import java.util.Iterator;
 public class AVIFWriterTest {
 
     @Test
+    public void testWriteRGB() throws IOException {
+        int width = 100;
+        int height = 100;
+        BufferedImage image = createTestImage(width, height, BufferedImage.TYPE_INT_RGB);
+
+        File output = new File("test_output_rgb.avif");
+        try {
+            boolean written = ImageIO.write(image, "avif", output);
+            Assertions.assertTrue(written, "AVIF writer not found");
+            Assertions.assertTrue(output.exists(), "Output file does not exist");
+            Assertions.assertTrue(output.length() > 0, "Output file is empty");
+
+            BufferedImage readBack = ImageIO.read(output);
+            Assertions.assertNotNull(readBack, "Failed to read back the AVIF image");
+            Assertions.assertEquals(width, readBack.getWidth());
+            Assertions.assertEquals(height, readBack.getHeight());
+            Assertions.assertFalse(readBack.getColorModel().hasAlpha(), "RGB image should not have alpha channel");
+            Assertions.assertEquals(BufferedImage.TYPE_INT_RGB, readBack.getType());
+        } finally {
+            if (output.exists()) {
+                output.delete();
+            }
+        }
+    }
+
+    @Test
+    public void testWriteARGB() throws IOException {
+        int width = 100;
+        int height = 100;
+        BufferedImage image = createTestImageWithAlpha(width, height);
+
+        File output = new File("test_output_argb.avif");
+        try {
+            boolean written = ImageIO.write(image, "avif", output);
+            Assertions.assertTrue(written, "AVIF writer not found");
+            Assertions.assertTrue(output.exists(), "Output file does not exist");
+            Assertions.assertTrue(output.length() > 0, "Output file is empty");
+
+            BufferedImage readBack = ImageIO.read(output);
+            Assertions.assertNotNull(readBack, "Failed to read back the AVIF image");
+            Assertions.assertEquals(width, readBack.getWidth());
+            Assertions.assertEquals(height, readBack.getHeight());
+            Assertions.assertTrue(readBack.getColorModel().hasAlpha(), "ARGB image should have alpha channel");
+            Assertions.assertEquals(BufferedImage.TYPE_INT_ARGB, readBack.getType());
+        } finally {
+            if (output.exists()) {
+                output.delete();
+            }
+        }
+    }
+
+    @Test
+    public void testWriteDifferentTypes() throws IOException {
+        int[] typesWithoutAlpha = new int[]{
+            BufferedImage.TYPE_INT_RGB,
+            BufferedImage.TYPE_INT_BGR,
+            BufferedImage.TYPE_3BYTE_BGR,
+            BufferedImage.TYPE_BYTE_GRAY
+        };
+
+        for (int type : typesWithoutAlpha) {
+            BufferedImage image = createTestImage(50, 50, type);
+            File output = new File("test_type_" + type + ".avif");
+            try {
+                boolean written = ImageIO.write(image, "avif", output);
+                Assertions.assertTrue(written, "AVIF writer failed for type: " + type);
+                Assertions.assertTrue(output.exists());
+                Assertions.assertTrue(output.length() > 0);
+
+                BufferedImage readBack = ImageIO.read(output);
+                Assertions.assertNotNull(readBack);
+                Assertions.assertEquals(50, readBack.getWidth());
+                Assertions.assertEquals(50, readBack.getHeight());
+                Assertions.assertFalse(readBack.getColorModel().hasAlpha());
+            } finally {
+                if (output.exists()) {
+                    output.delete();
+                }
+            }
+        }
+    }
+
+    @Test
     public void testWrite() throws IOException {
         int width = 100;
         int height = 100;
@@ -70,7 +153,22 @@ public class AVIFWriterTest {
     }
 
     private BufferedImage createTestImage(int width, int height) {
+        return createTestImage(width, height, BufferedImage.TYPE_INT_ARGB);
+    }
+
+    private BufferedImage createTestImageWithAlpha(int width, int height) {
         BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g = image.createGraphics();
+        g.setColor(new Color(255, 0, 0, 128));
+        g.fillRect(0, 0, width, height);
+        g.setColor(new Color(0, 0, 255, 200));
+        g.fillOval(10, 10, 80, 80);
+        g.dispose();
+        return image;
+    }
+
+    private BufferedImage createTestImage(int width, int height, int imageType) {
+        BufferedImage image = new BufferedImage(width, height, imageType);
         Graphics2D g = image.createGraphics();
         g.setColor(Color.RED);
         g.fillRect(0, 0, width, height);
