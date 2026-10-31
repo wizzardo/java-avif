@@ -91,8 +91,13 @@ public class AVIFImageWriter extends ImageWriter {
         int height = bi.getHeight();
         boolean hasAlpha = bi.getColorModel().hasAlpha();
 
+        int pixelFormat = avif_h.AVIF_PIXEL_FORMAT_YUV420();
+        if (param instanceof AVIFImageWriteParam) {
+            pixelFormat = ((AVIFImageWriteParam) param).getPixelFormat();
+        }
+
         try (Arena arena = Arena.ofConfined()) {
-            MemorySegment image = avif_h.avifImageCreate(width, height, 8, avif_h.AVIF_PIXEL_FORMAT_YUV444());
+            MemorySegment image = avif_h.avifImageCreate(width, height, 8, pixelFormat);
             if (image.equals(MemorySegment.NULL)) {
                 throw new IOException("Could not create avifImage");
             }
@@ -151,17 +156,6 @@ public class AVIFImageWriter extends ImageWriter {
             } finally {
                 avif_h.avifImageDestroy(image);
             }
-        }
-    }
-
-    private static class AVIFImageWriteParam extends ImageWriteParam {
-        public AVIFImageWriteParam(Locale locale) {
-            super(locale);
-            this.canWriteCompressed = true;
-            this.compressionTypes = new String[]{"AV1"};
-            this.compressionType = "AV1";
-            this.compressionMode = MODE_EXPLICIT;
-            this.compressionQuality = 0.6f;
         }
     }
 
